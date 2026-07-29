@@ -1,0 +1,57 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+
+metadata:
+  name: verify-image-signature
+
+spec:
+
+  # Reject images that do not pass verification
+  validationFailureAction: Enforce
+
+  rules:
+
+    - name: verify-image
+
+      match:
+
+        any:
+
+          - resources:
+
+              # Check all pod workloads
+              kinds:
+                - Pod
+
+
+      # Excluding reporting neighbour service
+      # because it is only a testing helper container
+      # and not a production application image
+      exclude:
+
+        any:
+
+          - resources:
+
+              namespaces:
+                - payments
+
+              names:
+                - reporting
+
+
+      verifyImages:
+
+        - imageReferences:
+
+            # Check all other images
+            - "*"
+
+          # Image verification is mandatory
+          required: true
+
+          # Automatically add digest if available
+          mutateDigest: true
+
+          # Only allow verified image digests
+          verifyDigest: true

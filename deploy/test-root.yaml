@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: insecure-root-test
+  namespace: payments
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: insecure-root-test
+
+  template:
+
+    metadata:
+      labels:
+        app: insecure-root-test
+
+    spec:
+
+      containers:
+
+        - name: nginx
+
+          image: nginx:1.25
+
+          securityContext:
+
+            # Running as root intentionally
+            runAsNonRoot: false

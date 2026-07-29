@@ -1,28 +1,144 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: ledger-api
   namespace: payments
   labels:
     app: ledger-api
+
 spec:
+
+  # Running Multiple replicas for availavility and zero downtime
   replicas: 3
+
   selector:
     matchLabels:
       app: ledger-api
+
   template:
+
     metadata:
       labels:
         app: ledger-api
+
     spec:
+
+      # Using a separate ServiceAccount instead of the default one
+      # because each application should have its own identity to avoid unnecessary kubernates permission.  
+      serviceAccountName: ledger-api-sa
+
+
       containers:
+
         - name: ledger-api
+
+          # Application image
           image: ledger-api:starter
+
+          # Use image available inside Minikube
+          # instead of pulling from external registry
           imagePullPolicy: IfNotPresent
-          env:
-            - name: STRIPE_API_KEY
-              value: "sk_live_9f3a2b7c1e4d8REDACTED"
-            - name: DB_PASSWORD
-              value: "P@ssw0rd123"
+
+
           ports:
             - containerPort: 8080
+
+
+          env:
+
+            # Normal application configuration comes from ConfigMap instead of hardcoding.
+            - name: APP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ledger-api-config
+                  key: APP_PORT
+
+
+            # Sensitive values are loaded from Kubernetes Secret for security
+            # so passwords and API keys are not stored in Git
+            - name: STRIPE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ledger-api-secret
+                  key: STRIPE_API_KEY
+
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ledger-api-secret
+                  key: DB_PASSWORD
+
+
+
+          securityContext:
+
+            # Container should not run with root privileges
+            runAsNonRoot: true
+
+            # Running application with normal user ID
+            runAsUser: 1000
+            runAsGroup: 1000
+
+
+            # Prevent container processes from getting more privileges
+            allowPrivilegeEscalation: false
+
+
+            # Making container filesystem read-only
+            # so files cannot be modified after startup
+            readOnlyRootFilesystem: true
+
+
+            # Removing unnecessary Linux capabilities
+            # container only gets required permissions
+            capabilities:
+              drop:
+                - ALL
+
+
+            # Using default Kubernetes seccomp profile
+            # to restrict unsafe system calls
+            seccompProfile:
+              type: RuntimeDefault
+
+
+
+          resources:
+
+            # Minimum resources required by application
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+
+
+            # Maximum resources application can consume
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+
+
+          # Kubernetes checks this endpoint
+          # if it fails Kubernetes restarts the container
+          livenessProbe:
+
+            httpGet:
+              path: /health
+              port: 8080
+
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+
+
+          # Kubernetes sends traffic only when application is ready
+          readinessProbe:
+
+            httpGet:
+              path: /health
+              port: 8080
+
+            initialDelaySeconds: 5
+            periodSeconds: 5

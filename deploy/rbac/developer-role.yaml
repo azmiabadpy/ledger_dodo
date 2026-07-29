@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+
+metadata:
+  name: developer-role
+  namespace: payments
+
+rules:
+
+# Developers can view application resources
+- apiGroups: [""]
+  resources:
+    - pods
+    - services
+    - configmaps
+  verbs:
+    - get
+    - list
+    - watch
+
+# Developers can check logs
+- apiGroups: [""]
+  resources:
+    - pods/log
+  verbs:
+    - get
