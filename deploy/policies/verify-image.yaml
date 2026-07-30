@@ -16,12 +16,10 @@ spec:
 
         any:
           - resources:
-
               kinds:
                 - Pod
 
 
-      # Exclude reporting helper pod
       exclude:
 
         any:
@@ -34,16 +32,13 @@ spec:
               selector:
 
                 matchLabels:
-
                   app: reporting
-
 
 
       verifyImages:
 
         - imageReferences:
 
-            # Only verify application images
             - "ghcr.io/azmiabadpy/ledger-api*"
 
 
@@ -52,3 +47,18 @@ spec:
           mutateDigest: true
 
           verifyDigest: true
+
+
+          attestors:
+
+            - entries:
+
+                - keyless:
+
+                    issuer: https://token.actions.githubusercontent.com
+
+                    subjectRegExp: >-
+                      https://github.com/azmiabadpy/ledger_dodo/.github/workflows/secure-pipeline.yaml@refs/heads/main
+
+                    rekor:
+                      url: https://rekor.sigstore.dev
