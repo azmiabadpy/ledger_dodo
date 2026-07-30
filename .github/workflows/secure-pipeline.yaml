@@ -34,19 +34,16 @@ jobs:
     steps:
 
 
-      # Checkout repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
 
 
-      # Setup Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
 
 
-      # Login to GitHub Container Registry
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -56,7 +53,6 @@ jobs:
 
 
 
-      # Secret scanning
       - name: Run Gitleaks Secret Scan
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -64,7 +60,6 @@ jobs:
 
 
 
-      # SAST scanning
       - name: Run Semgrep SAST Scan
         uses: semgrep/semgrep-action@v1
         with:
@@ -72,7 +67,6 @@ jobs:
 
 
 
-      # Dependency vulnerability scanning
       - name: Run Trivy Filesystem Scan
         uses: aquasecurity/trivy-action@master
         with:
@@ -85,16 +79,16 @@ jobs:
 
 
 
-      # Generate image tags
       - name: Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/ledger-api
+          tags: |
+            type=sha
 
 
 
-      # Build image locally for scanning
       - name: Build Docker Image
         uses: docker/build-push-action@v6
         with:
@@ -102,15 +96,14 @@ jobs:
           file: ./app/Dockerfile
           load: true
           push: false
-          tags: ledger-api:latest
+          tags: ledger-api:test
 
 
 
-      # Image vulnerability scan
       - name: Run Trivy Image Scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ledger-api:latest
+          image-ref: ledger-api:test
           format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
@@ -118,7 +111,6 @@ jobs:
 
 
 
-      # Push image to GHCR
       - name: Push Docker Image to GHCR
         id: push
         uses: docker/build-push-action@v6
@@ -126,18 +118,18 @@ jobs:
           context: ./app
           file: ./app/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ledger-api:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
 
 
 
-      # Install Cosign
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
 
 
-      # Keyless signing using GitHub OIDC
       - name: Sign Docker Image with Cosign
         run: |
 
@@ -146,7 +138,14 @@ jobs:
 
 
 
-      # Generate SLSA provenance attestation
+      - name: Verify Signature
+        run: |
+
+          cosign verify \
+          ghcr.io/${{ github.repository_owner }}/ledger-api@${{ steps.push.outputs.digest }}
+
+
+
       - name: Generate SLSA Provenance Attestation
         uses: actions/attest-build-provenance@v2
         with:
