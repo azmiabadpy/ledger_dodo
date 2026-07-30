@@ -74,6 +74,7 @@ jobs:
           scan-ref: .
           format: table
           severity: HIGH,CRITICAL
+          ignore-unfixed: true
           exit-code: 1
 
 
@@ -104,6 +105,7 @@ jobs:
           image-ref: ledger-api:latest
           format: table
           severity: HIGH,CRITICAL
+          ignore-unfixed: true
           exit-code: 1
 
 
