@@ -6,13 +6,17 @@ metadata:
 
 spec:
 
+  # Block workloads that do not run as non-root
   validationFailureAction: Enforce
 
+  # Check existing resources also
   background: true
+
 
   rules:
 
     - name: check-container-runs-as-non-root
+
 
       match:
 
@@ -21,12 +25,28 @@ spec:
           - resources:
 
               kinds:
+
                 - Pod
+
+
+      # Exclude platform components
+      # ArgoCD manages the cluster and has its own security requirements
+      exclude:
+
+        any:
+
+          - resources:
+
+              namespaces:
+
+                - argocd
+
 
 
       validate:
 
         message: "Container must run as non-root user"
+
 
         pattern:
 
