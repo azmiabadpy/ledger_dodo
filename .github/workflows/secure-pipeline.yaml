@@ -68,7 +68,7 @@ jobs:
 
       # Dependency and CVE scan
       - name: Run Trivy Filesystem Scan
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
@@ -86,7 +86,7 @@ jobs:
 
 
       # Build Docker image locally
-      # Image is not pushed yet
+      # Image is not pushed until security checks pass
       - name: Build Docker Image
         uses: docker/build-push-action@v6
         with:
@@ -97,9 +97,9 @@ jobs:
           tags: ledger-api:latest
 
 
-      # Scan image before publishing
+      # Scan Docker image for vulnerabilities
       - name: Run Trivy Image Scan
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ledger-api:latest
           format: table
