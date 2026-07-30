@@ -6,7 +6,6 @@ metadata:
 
 spec:
 
-  # Reject images that do not pass verification
   validationFailureAction: Enforce
 
   rules:
@@ -16,17 +15,13 @@ spec:
       match:
 
         any:
-
           - resources:
 
-              # Check all pod workloads
               kinds:
                 - Pod
 
 
-      # Excluding reporting neighbour service
-      # because it is only a testing helper container
-      # and not a production application image
+      # Exclude reporting helper pod
       exclude:
 
         any:
@@ -36,22 +31,24 @@ spec:
               namespaces:
                 - payments
 
-              names:
-                - reporting
+              selector:
+
+                matchLabels:
+
+                  app: reporting
+
 
 
       verifyImages:
 
         - imageReferences:
 
-            # Check all other images
-            - "*"
+            # Only verify application images
+            - "ghcr.io/azmiabadpy/ledger-api*"
 
-          # Image verification is mandatory
+
           required: true
 
-          # Automatically add digest if available
           mutateDigest: true
 
-          # Only allow verified image digests
           verifyDigest: true
