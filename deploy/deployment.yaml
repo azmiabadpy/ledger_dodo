@@ -34,7 +34,7 @@ spec:
         - name: ledger-api
 
           # Application image
-          image: ledger-api:starter
+          image: ghcr.io/azmiabadpy/ledger-api:main
 
           # Use image available inside Minikube
           # instead of pulling from external registry
