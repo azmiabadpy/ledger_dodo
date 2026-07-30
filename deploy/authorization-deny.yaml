@@ -1,0 +1,16 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+
+metadata:
+  name: ledger-api-deny-all
+  namespace: payments
+
+spec:
+
+  selector:
+    matchLabels:
+      app: ledger-api
+
+  action: ALLOW
+
+  rules: []
