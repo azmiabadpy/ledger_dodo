@@ -5,9 +5,9 @@ metadata:
   name: reporting
   namespace: payments
 
-# This service does not need Kubernetes API access,
-# so we disable automatic token mounting
+# This service does not need Kubernetes API access
 automountServiceAccountToken: false
+
 
 ---
 
@@ -21,117 +21,139 @@ metadata:
   labels:
     app: reporting
 
+
 spec:
 
-  # Single replica because this is only a neighbour service
+  # Single replica because this is only a neighbour/test service
   replicas: 1
 
+
   selector:
+
     matchLabels:
       app: reporting
+
 
   template:
 
     metadata:
+
       labels:
         app: reporting
 
+
     spec:
 
-      # Using dedicated ServiceAccount instead of default SA
-      # because every application should have its own identity
+      # Dedicated ServiceAccount instead of default SA
       serviceAccountName: reporting
 
-      # Pod level security configuration
+
+      # Pod security configuration
       securityContext:
 
-        # Container must run without root privileges
+        # Container must not run as root
         runAsNonRoot: true
 
-        # Use default Kubernetes seccomp profile
+        # Default Kubernetes seccomp profile
         seccompProfile:
           type: RuntimeDefault
 
 
+
       containers:
 
-        - name: client
-
-          # Neighbour service image
-          image: curlimages/curl@sha256:73e4d532ea62d7505c5865b517d3704966ffe916609bedc22af6833dc9969bcd
-
-          # Keep container running for testing communication
-          command:
-            - sleep
-
-          args:
-            - "3600"
+      - name: client
 
 
-          securityContext:
-
-            # Run container with non-root user
-            runAsUser: 1000
-            runAsGroup: 1000
-
-            # Prevent gaining additional privileges
-            allowPrivilegeEscalation: false
-
-            # Make container filesystem read-only
-            readOnlyRootFilesystem: true
-
-            # Remove unnecessary Linux capabilities
-            capabilities:
-
-              drop:
-                - ALL
-
-
-          resources:
-
-            # Minimum resources required by container
-            requests:
-
-              cpu: "50m"
-              memory: "64Mi"
-
-
-            # Maximum resources allowed
-            limits:
-
-              cpu: "200m"
-              memory: "128Mi"
+        # Pinned image version for security
+        image: curlimages/curl@sha256:73e4d532ea62d7505c5865b517d3704966ffe916609bedc22af6833dc9969bcd
 
 
 
-          # Check container is alive
-          livenessProbe:
+        # Keep container alive continuously
+        command:
 
-            exec:
+        - sleep
 
-              command:
 
-                - sh
-                - -c
-                - "curl --version"
+        args:
 
-            initialDelaySeconds: 10
-            periodSeconds: 20
-            timeoutSeconds: 5
+        - infinity
 
 
 
-          # Check container is ready
-          readinessProbe:
+        securityContext:
 
-            exec:
 
-              command:
+          # Run container as non-root user
+          runAsUser: 1000
+          runAsGroup: 1000
 
-                - sh
-                - -c
-                - "curl --version"
 
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 4
+          # Prevent privilege escalation
+          allowPrivilegeEscalation: false
+
+
+          # Read-only filesystem
+          readOnlyRootFilesystem: true
+
+
+          # Drop unnecessary Linux capabilities
+          capabilities:
+
+            drop:
+            - ALL
+
+
+
+        resources:
+
+
+          requests:
+
+            cpu: "50m"
+            memory: "64Mi"
+
+
+          limits:
+
+            cpu: "200m"
+            memory: "128Mi"
+
+
+
+        # Container health check
+        livenessProbe:
+
+          exec:
+
+            command:
+
+            - sh
+            - -c
+            - "true"
+
+
+          initialDelaySeconds: 10
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+
+
+        # Container readiness check
+        readinessProbe:
+
+          exec:
+
+            command:
+
+            - sh
+            - -c
+            - "true"
+
+
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
