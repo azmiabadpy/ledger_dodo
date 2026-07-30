@@ -1,0 +1,118 @@
+name: Secure CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  id-token: write
+
+
+env:
+  IMAGE_NAME: ledger-api
+
+
+jobs:
+
+  security-and-build:
+
+    name: Build, Scan and Push
+
+    runs-on: ubuntu-latest
+
+
+    steps:
+
+
+      # Checkout repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # Setup Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+
+      # Login to GitHub Container Registry
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+
+      # Scan repository for leaked secrets
+      - name: Run Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+      # Static Application Security Testing
+      - name: Run Semgrep SAST Scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+
+
+      # Dependency and CVE scan
+      - name: Run Trivy Filesystem Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+
+      # Generate Docker image metadata
+      - name: Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/ledger-api
+
+
+      # Build Docker image locally
+      # Image is not pushed yet
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          load: true
+          push: false
+          tags: ledger-api:latest
+
+
+      # Scan image before publishing
+      - name: Run Trivy Image Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ledger-api:latest
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+
+      # Push image only after security gates pass
+      - name: Push Docker Image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
