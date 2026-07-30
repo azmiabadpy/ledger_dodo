@@ -9,7 +9,7 @@ metadata:
 
 spec:
 
-  # Running Multiple replicas for availavility and zero downtime
+  # Running Multiple replicas for availability and zero downtime
   replicas: 3
 
   selector:
@@ -24,9 +24,22 @@ spec:
 
     spec:
 
-      # Using a separate ServiceAccount instead of the default one
-      # because each application should have its own identity to avoid unnecessary kubernates permission.  
+      # Using a separate ServiceAccount instead of default account
       serviceAccountName: ledger-api-sa
+
+
+      # Pod level security context
+      # Required by Kyverno non-root policy
+      securityContext:
+
+        # Pod cannot run as root
+        runAsNonRoot: true
+
+        # Normal Linux user
+        runAsUser: 1000
+
+        # Normal Linux group
+        runAsGroup: 1000
 
 
       containers:
@@ -36,109 +49,138 @@ spec:
           # Application image
           image: ghcr.io/azmiabadpy/ledger-api:main
 
-          # Use image available inside Minikube
-          # instead of pulling from external registry
+          # Use local image if available
           imagePullPolicy: IfNotPresent
 
 
           ports:
+
             - containerPort: 8080
 
 
           env:
 
-            # Normal application configuration comes from ConfigMap instead of hardcoding.
+
+            # Application configuration from ConfigMap
             - name: APP_PORT
+
               valueFrom:
+
                 configMapKeyRef:
+
                   name: ledger-api-config
+
                   key: APP_PORT
 
 
-            # Sensitive values are loaded from Kubernetes Secret for security
-            # so passwords and API keys are not stored in Git
+
+            # Sensitive values from SealedSecret
             - name: STRIPE_API_KEY
+
               valueFrom:
+
                 secretKeyRef:
+
                   name: ledger-api-secret
+
                   key: STRIPE_API_KEY
 
 
+
             - name: DB_PASSWORD
+
               valueFrom:
+
                 secretKeyRef:
+
                   name: ledger-api-secret
+
                   key: DB_PASSWORD
 
 
 
+          # Container level security hardening
           securityContext:
 
-            # Container should not run with root privileges
+
+            # Prevent root execution
             runAsNonRoot: true
 
-            # Running application with normal user ID
             runAsUser: 1000
+
             runAsGroup: 1000
 
 
-            # Prevent container processes from getting more privileges
+            # Prevent privilege escalation
             allowPrivilegeEscalation: false
 
 
-            # Making container filesystem read-only
-            # so files cannot be modified after startup
+            # Immutable filesystem
             readOnlyRootFilesystem: true
 
 
-            # Removing unnecessary Linux capabilities
-            # container only gets required permissions
+            # Remove unnecessary Linux capabilities
             capabilities:
+
               drop:
+
                 - ALL
 
 
-            # Using default Kubernetes seccomp profile
-            # to restrict unsafe system calls
+            # Kubernetes default seccomp profile
             seccompProfile:
+
               type: RuntimeDefault
 
 
 
           resources:
 
-            # Minimum resources required by application
+
             requests:
+
               cpu: "100m"
+
               memory: "128Mi"
 
 
-            # Maximum resources application can consume
+
             limits:
+
               cpu: "500m"
+
               memory: "256Mi"
 
 
 
-          # Kubernetes checks this endpoint
-          # if it fails Kubernetes restarts the container
+          # Container health check
           livenessProbe:
 
+
             httpGet:
+
               path: /health
+
               port: 8080
 
+
             initialDelaySeconds: 10
+
             periodSeconds: 10
 
 
 
-          # Kubernetes sends traffic only when application is ready
+          # Traffic only after application is ready
           readinessProbe:
 
+
             httpGet:
+
               path: /health
+
               port: 8080
 
+
             initialDelaySeconds: 5
+
             periodSeconds: 5
