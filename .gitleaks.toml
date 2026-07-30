@@ -1,0 +1,9 @@
+title = "Gitleaks Configuration"
+
+[allowlist]
+
+description = "Allow Kubernetes sealed secrets"
+
+paths = [
+    '''deploy/sealed-secret.yaml'''
+]
