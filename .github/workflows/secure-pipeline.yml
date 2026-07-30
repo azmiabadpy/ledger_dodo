@@ -68,7 +68,7 @@ jobs:
 
       # Dependency and CVE scan
       - name: Run Trivy Filesystem Scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: fs
           scan-ref: .
@@ -99,7 +99,7 @@ jobs:
 
       # Scan image before publishing
       - name: Run Trivy Image Scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: ledger-api:latest
           format: table
